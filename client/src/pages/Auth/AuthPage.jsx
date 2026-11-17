@@ -3,7 +3,7 @@ import { Sparkles, Mail, Lock, User, GraduationCap, Languages } from 'lucide-rea
 import { useAuth } from '../../context/AuthContext';
 
 export function AuthPage() {
-  const { login, register } = useAuth();
+  const { login, demoLogin, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -12,6 +12,18 @@ export function AuthPage() {
   const [language, setLanguage] = useState('en');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  async function handleDemoSignIn() {
+    setError(null);
+    setLoading(true);
+    try {
+      await demoLogin();
+    } catch (err) {
+      setError(err.message || 'Demo login failed');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -164,6 +176,15 @@ export function AuthPage() {
           >
             {loading ? 'Processing...' : (isLogin ? 'Sign In to LIFE OS' : 'Create Free Account')}
           </button>
+
+          <button
+            type="button"
+            onClick={handleDemoSignIn}
+            disabled={loading}
+            style={styles.demoBtn}
+          >
+            🚀 1-Click Instant Demo Sign-In (AKHILBABU)
+          </button>
         </form>
 
         <div style={styles.footerNotice}>
@@ -297,6 +318,18 @@ const styles = {
     fontWeight: 600,
     fontSize: '0.9rem',
     marginTop: '0.5rem',
+  },
+  demoBtn: {
+    padding: '0.75rem',
+    borderRadius: 'var(--radius-md)',
+    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(168, 85, 247, 0.25) 100%)',
+    border: '1px solid rgba(168, 85, 247, 0.4)',
+    color: '#c084fc',
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    textAlign: 'center',
+    transition: 'all 150ms ease',
   },
   footerNotice: {
     marginTop: '1.5rem',

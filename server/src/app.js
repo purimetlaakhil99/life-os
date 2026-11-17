@@ -23,6 +23,9 @@ import integrationRoutes from './routes/integrationRoutes.js';
 
 export const app = express();
 
+// Trust reverse proxy (Cloudflare Tunnel, Render, Railway, Nginx)
+app.set('trust proxy', 1);
+
 // Security Middlewares
 app.use(helmet({
   contentSecurityPolicy: false, // Allows flexible API responses and client embed

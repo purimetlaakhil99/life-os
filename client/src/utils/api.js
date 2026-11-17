@@ -37,6 +37,7 @@ export const api = {
   // Auth
   login: (credentials) => apiRequest('/auth/login', { method: 'POST', body: credentials }),
   register: (userData) => apiRequest('/auth/register', { method: 'POST', body: userData }),
+  demoLogin: () => apiRequest('/auth/demo-login', { method: 'POST' }),
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),
   getMe: () => apiRequest('/auth/me'),
   updateSettings: (settings) => apiRequest('/auth/settings', { method: 'PUT', body: settings }),

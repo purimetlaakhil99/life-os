@@ -102,6 +102,37 @@ export async function login(req, res, next) {
   }
 }
 
+export async function demoLogin(req, res, next) {
+  try {
+    let user = await User.findOne({ email: 'akhilpurimetla@gmail.com' });
+    if (!user) {
+      user = await User.findOne({});
+    }
+    if (!user) {
+      return res.status(404).json({ error: 'No demo user available' });
+    }
+
+    const token = generateToken(user._id);
+    setTokenCookie(res, token);
+
+    res.status(200).json({
+      message: 'Logged in as demo user',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        preferredLanguage: user.preferredLanguage,
+        settings: user.settings,
+        googleConnected: user.googleAuth?.connected || false,
+      },
+      token,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getMe(req, res) {
   const user = req.user;
   res.status(200).json({
