@@ -1,0 +1,62 @@
+name: LIFE OS CI & Verification Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-and-test:
+    name: Build, Lint & Automated Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install Server Dependencies
+        run: |
+          cd server
+          npm ci || npm install
+
+      - name: Install Client Dependencies
+        run: |
+          cd client
+          npm ci || npm install
+
+      - name: Build Frontend Application (Vite)
+        run: |
+          cd client
+          npm run build
+
+      - name: Run Backend Automated Test Suite (Vitest)
+        env:
+          NODE_ENV: test
+          PORT: 5001
+          MONGODB_URI: mongodb://localhost:27017/life_os_test
+          JWT_SECRET: test_secure_jwt_secret_key_long_enough_12345
+          TOKEN_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        run: |
+          cd server
+          npm test
+
+      - name: Security & Vulnerability Check
+        run: |
+          cd server
+          npm audit --audit-level=high || true
