@@ -1,5 +1,11 @@
 # LIFE OS — Personal Digital Life & Student Life Operating System
 
+[![CI & Automated Tests](https://github.com/purimetlaakhil99/life-os/actions/workflows/ci.yml/badge.svg)](https://github.com/purimetlaakhil99/life-os/actions)
+[![Release](https://img.shields.io/github/v/release/purimetlaakhil99/life-os?color=indigo)](https://github.com/purimetlaakhil99/life-os/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-18-cyan.svg)](https://react.dev)
+
 LIFE OS is a comprehensive, privacy-first personal intelligence and academic life operating system. It unifies daily digital routines, task scheduling, communications, attendance intelligence, and university curriculum resources into a single responsive web platform powered by an authorized AI assistant with multilingual voice interaction.
 
 ---
