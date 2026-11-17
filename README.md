@@ -135,6 +135,11 @@ life-os/
 
 ## 6. Installation & Local Setup
 
+### Live Demonstration & Public HTTPS URL
+- **Production Web Application**: [https://defend-possibilities-sox-upper.trycloudflare.com](https://defend-possibilities-sox-upper.trycloudflare.com)
+- **API Health Check**: [https://defend-possibilities-sox-upper.trycloudflare.com/api/health](https://defend-possibilities-sox-upper.trycloudflare.com/api/health)
+- **GitHub Repository**: [https://github.com/purimetlaakhil99/life-os](https://github.com/purimetlaakhil99/life-os)
+
 ### Prerequisites
 - Node.js (v20+ or v26 compatible)
 - MongoDB instance running locally on `mongodb://localhost:27017` or MongoDB Atlas URI.
