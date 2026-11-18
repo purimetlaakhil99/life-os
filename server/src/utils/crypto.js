@@ -64,12 +64,16 @@ export async function verifyPassword(password, hash) {
   return false;
 }
 
+function getEncryptionKeyBuffer() {
+  return crypto.createHash('sha256').update(String(ENV.TOKEN_ENCRYPTION_KEY || 'life_os_default_key')).digest();
+}
+
 /**
  * Encrypt sensitive tokens (e.g. Google OAuth refresh tokens) using AES-256-GCM
  */
 export function encryptToken(plainText) {
   if (!plainText) return null;
-  const key = Buffer.from(ENV.TOKEN_ENCRYPTION_KEY.padEnd(64, '0').slice(0, 64), 'hex');
+  const key = getEncryptionKeyBuffer();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
 
@@ -89,7 +93,7 @@ export function decryptToken(cipherText) {
   if (parts.length !== 3) return null;
 
   const [ivHex, authTagHex, encryptedHex] = parts;
-  const key = Buffer.from(ENV.TOKEN_ENCRYPTION_KEY.padEnd(64, '0').slice(0, 64), 'hex');
+  const key = getEncryptionKeyBuffer();
   const iv = Buffer.from(ivHex, 'hex');
   const authTag = Buffer.from(authTagHex, 'hex');
 

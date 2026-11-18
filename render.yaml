@@ -1,11 +1,9 @@
 services:
   - type: web
     name: life-os
-    env: node
+    runtime: node
     plan: free
-    buildCommand: |
-      cd server && npm install
-      cd ../client && npm install && npm run build
+    buildCommand: npm install --prefix server && npm install --prefix client && npm run build --prefix client
     startCommand: node server/src/server.js
     envVars:
       - key: NODE_ENV
@@ -23,8 +21,8 @@ services:
       - key: CLIENT_URL
         value: https://life-os.onrender.com
       - key: GOOGLE_CLIENT_ID
-        sync: false
+        value: ""
       - key: GOOGLE_CLIENT_SECRET
-        sync: false
+        value: ""
       - key: GEMINI_API_KEY
-        sync: false
+        value: ""

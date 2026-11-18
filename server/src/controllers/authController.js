@@ -109,7 +109,22 @@ export async function demoLogin(req, res, next) {
       user = await User.findOne({});
     }
     if (!user) {
-      return res.status(404).json({ error: 'No demo user available' });
+      const passwordHash = await hashPassword('LifeOSDemo2026!');
+      user = await User.create({
+        name: 'AKHILBABU',
+        email: 'akhilpurimetla@gmail.com',
+        passwordHash,
+        role: 'student',
+        preferredLanguage: 'en',
+      });
+      await StudentProfile.create({
+        userId: user._id,
+        university: 'National Institute of Technology',
+        course: 'B.Tech',
+        branch: 'Computer Science and Engineering',
+        semester: 5,
+        attendanceTarget: 75,
+      });
     }
 
     const token = generateToken(user._id);

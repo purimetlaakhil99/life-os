@@ -22,6 +22,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import integrationRoutes from './routes/integrationRoutes.js';
 import fileRoutes from './routes/fileRoutes.js';
 import careerRoutes from './routes/careerRoutes.js';
+import { processPendingJobs } from './services/durableScheduler.js';
 
 export const app = express();
 
@@ -35,7 +36,20 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: [ENV.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const allowedExact = [ENV.CLIENT_URL, 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5000'];
+    if (
+      allowedExact.includes(origin) ||
+      /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin) ||
+      /^https:\/\/[a-z0-9-]+\.onrender\.com$/i.test(origin) ||
+      /^https:\/\/[a-z0-9-]+\.up\.railway\.app$/i.test(origin) ||
+      /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/i.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -63,6 +77,19 @@ app.get('/api/health', (req, res) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Durable scheduler cron trigger (for Vercel Cron / external schedulers)
+app.get('/api/cron/tick', async (req, res, next) => {
+  try {
+    if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+      return res.status(401).json({ error: 'Unauthorized cron trigger' });
+    }
+    await processPendingJobs();
+    res.status(200).json({ ok: true, processedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Mount Routes
