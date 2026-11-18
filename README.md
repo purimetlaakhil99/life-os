@@ -142,8 +142,8 @@ life-os/
 ## 6. Installation & Local Setup
 
 ### Live Demonstration & Public HTTPS URL
-- **Production Web Application**: [https://yet-testament-advancement-lcd.trycloudflare.com](https://yet-testament-advancement-lcd.trycloudflare.com)
-- **API Health Check**: [https://yet-testament-advancement-lcd.trycloudflare.com/api/health](https://yet-testament-advancement-lcd.trycloudflare.com/api/health)
+- **Production Web Application**: [https://floor-supplemental-motels-students.trycloudflare.com](https://floor-supplemental-motels-students.trycloudflare.com)
+- **API Health Check**: [https://floor-supplemental-motels-students.trycloudflare.com/api/health](https://floor-supplemental-motels-students.trycloudflare.com/api/health)
 - **GitHub Repository**: [https://github.com/purimetlaakhil99/life-os](https://github.com/purimetlaakhil99/life-os)
 
 ### Prerequisites
@@ -224,4 +224,51 @@ Run the full backend test suite:
 cd server
 npm test
 ```
-All unit and integration tests (GPA calculations, Attendance formulas, Cryptographic security, 12-section Academic Notes, Birthday Worker, and Express routes) execute via Vitest.
+All unit and integration tests (GPA calculations, Attendance formulas, Cryptographic security, 12-section Academic Notes, Birthday Worker, File Security, and Express routes) execute via Vitest. Browser E2E tests are located in `e2e/life-os.spec.js`.
+
+---
+
+## 10. API Reference Summary
+
+| Prefix | Capabilities |
+|--------|--------------|
+| `/api/auth` | Register, Login, Demo Login, Logout, Profile, Preferences |
+| `/api/ai` | Unified Chat & Voice, Daily Briefing, Sensitive Action Preview & Confirm |
+| `/api/tasks` | Task CRUD, Priority & Status Filtering, Recurrence, Reminders |
+| `/api/planner` | Merged Timeline Schedule, Calendar Events with Conflict Detection |
+| `/api/student` | Profile, Timetable CRUD, Attendance Intelligence, Assignments, SGPA/CGPA |
+| `/api/academic` | 12-Section AI Notes, PDF Download, Question Papers Search/Upload/Analysis, Study Buddy |
+| `/api/contacts` | Contacts, Multilingual Birthday Wishes (EN/HI/TE), Automated Gmail Scheduling |
+| `/api/memory` | Private Isolated Personal AI Memory CRUD |
+| `/api/capture` | Universal Quick Capture (auto-classifies into Task, Event, Reference, Idea, or Memory) |
+| `/api/files` | Secure Digital Files & Study Material Vault (MIME whitelist, 5 MB cap, Audit Logs) |
+| `/api/career` | Persistent DSA Problems, Internships, College Projects, Scholarships, Campus Events & Budget |
+| `/api/goals` | Goals, Daily Habit Consistency Streaks, Routines |
+| `/api/subscriptions` | Recurring Bills & Subscription Renewal Tracking |
+| `/api/notifications` | In-App Alerts, Read/Unread, Snooze, Web Push Subscriptions |
+| `/api/integrations` | Official Google OAuth 2.0 Connection, Status & Disconnect |
+
+---
+
+## 11. AI, Voice & Deployment Setup
+
+### AI Configuration
+Set `LLM_PROVIDER=gemini` and `GEMINI_API_KEY` (or `LLM_PROVIDER=openai` and `OPENAI_API_KEY`) in `server/.env`. When no external key is present, LIFE OS automatically falls back to its built-in deterministic intelligence engine.
+
+### Multilingual Voice Setup
+Uses the browser Web Speech API (`SpeechRecognition` and `SpeechSynthesis`) with BCP-47 locales `en-US`, `hi-IN`, and `te-IN`. Microphone access is activated strictly on user click and never records continuously in the background.
+
+### Production Deployment
+Deploy directly from GitHub using the included manifests:
+- **Docker**: `Dockerfile` (multi-stage build serving compiled React SPA + Express backend + durable scheduler)
+- **Render**: `render.yaml`
+- **Railway**: `railway.json`
+
+Configure `MONGODB_URI`, `JWT_SECRET`, `SESSION_SECRET`, `TOKEN_ENCRYPTION_KEY`, and optional `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GEMINI_API_KEY` through your hosting provider's secret manager.
+
+---
+
+## 12. Screenshots
+
+### Home Dashboard
+![LIFE OS Home Dashboard](docs/screenshots/home-dashboard.png)
