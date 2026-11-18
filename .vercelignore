@@ -1,0 +1,11 @@
+Dockerfile
+render.yaml
+railway.json
+e2e/
+docs/
+server/tests/
+server/uploads/
+.git/
+node_modules/
+client/node_modules/
+server/node_modules/

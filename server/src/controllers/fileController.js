@@ -7,7 +7,7 @@ import { AuditLog } from '../models/AuditLog.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const UPLOADS_ROOT = path.resolve(__dirname, '../../uploads');
+const UPLOADS_ROOT = process.env.VERCEL ? '/tmp/life-os-uploads' : path.resolve(__dirname, '../../uploads');
 
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',

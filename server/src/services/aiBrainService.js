@@ -17,7 +17,7 @@ const pendingActionTokens = new Map();
 /**
  * Clean expired confirmation tokens periodically
  */
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [token, data] of pendingActionTokens.entries()) {
     if (now > data.expiresAt) {
@@ -25,6 +25,7 @@ setInterval(() => {
     }
   }
 }, 60000);
+if (cleanupTimer.unref) cleanupTimer.unref();
 
 export const AUTHORIZED_TOOLS = {
   // 1. Task Creation Tool

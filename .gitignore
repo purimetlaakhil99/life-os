@@ -13,6 +13,7 @@ test-results/
 # Production builds
 dist/
 build/
+.vercel/
 server/uploads/
 
 # Environment and sensitive secrets
@@ -42,3 +43,5 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

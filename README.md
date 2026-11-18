@@ -141,9 +141,9 @@ life-os/
 
 ## 6. Installation & Local Setup
 
-### Live Demonstration & Public HTTPS URL
-- **Production Web Application**: [https://floor-supplemental-motels-students.trycloudflare.com](https://floor-supplemental-motels-students.trycloudflare.com)
-- **API Health Check**: [https://floor-supplemental-motels-students.trycloudflare.com/api/health](https://floor-supplemental-motels-students.trycloudflare.com/api/health)
+### Live Production Deployment (Vercel HTTPS)
+- **Production Web Application**: [https://life-os-ochre-ten.vercel.app](https://life-os-ochre-ten.vercel.app)
+- **API Health Check**: [https://life-os-ochre-ten.vercel.app/api/health](https://life-os-ochre-ten.vercel.app/api/health)
 - **GitHub Repository**: [https://github.com/purimetlaakhil99/life-os](https://github.com/purimetlaakhil99/life-os)
 
 ### Prerequisites
