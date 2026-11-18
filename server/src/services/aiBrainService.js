@@ -4,9 +4,11 @@ import { Task } from '../models/Task.js';
 import { Event } from '../models/Event.js';
 import { Contact } from '../models/Contact.js';
 import { AttendanceRecord } from '../models/AttendanceRecord.js';
+import { DigitalFile } from '../models/DigitalFile.js';
 import { calculateAttendanceStats } from './attendanceService.js';
 import { generateStructuredNotes } from './notesGeneratorService.js';
 import { analyzeQuestionPatterns } from './academicSearchService.js';
+import { generateLLMCompletion } from './llmProviderService.js';
 import crypto from 'crypto';
 
 // In-memory cache for pending sensitive action confirmation tokens
@@ -227,6 +229,26 @@ export const AUTHORIZED_TOOLS = {
         contact: { id: contact._id, name: contact.name, birthdaySendTime: contact.birthdaySendTime }
       };
     }
+  },
+
+  // 10. Search Uploaded Digital Files Tool
+  search_digital_files: {
+    name: 'search_digital_files',
+    description: 'Search user uploaded documents, study materials, and personal references',
+    isSensitive: false,
+    execute: async (params, userId) => {
+      const { query = '' } = params;
+      const filter = { userId };
+      if (query.trim()) {
+        const regex = new RegExp(query.trim(), 'i');
+        filter.$or = [{ title: regex }, { originalName: regex }, { extractedText: regex }, { subject: regex }];
+      }
+      const files = await DigitalFile.find(filter).limit(5).select('title originalName category subject createdAt');
+      return {
+        action: 'search_digital_files',
+        results: files,
+      };
+    }
   }
 };
 
@@ -382,9 +404,28 @@ export async function processAIChat({ message, userId, language = 'en', mode = '
     executedActions.push(eventRes);
     aiReply = `I've scheduled "${titleMatch}" for ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. ${eventRes.conflictWarning || ''}`;
   }
-  // G. Conversational QA & General Life Intelligence
+  // F2. File & Document Search Intent
+  else if (/find file|search file|my document|uploaded notes|my files/i.test(lower)) {
+    const query = text.replace(/^(find file|search file|my document|uploaded notes|my files)\s*(for|about)?\s*/i, '').trim();
+    const fileRes = await AUTHORIZED_TOOLS.search_digital_files.execute({ query }, userId);
+    executedActions.push(fileRes);
+    if (fileRes.results.length > 0) {
+      const list = fileRes.results.map(f => `• ${f.title} (${f.category})`).join('\n');
+      aiReply = `Here are the matching files from your private Digital Vault:\n${list}`;
+    } else {
+      aiReply = `No uploaded documents matched "${query || 'your query'}". You can upload files securely in My Memory -> Digital Vault or Student Life.`;
+    }
+  }
+  // G. Conversational QA & General Life Intelligence (uses configured LLM if available)
   else {
-    if (language === 'hi') {
+    const llmText = await generateLLMCompletion({
+      systemPrompt: `You are LIFE OS, a helpful personal and student life AI assistant. Respond in language code "${language}" (en=English, hi=Hindi, te=Telugu). Use the user's private memories when relevant:\n${memoryContext || 'No memories yet.'}`,
+      userPrompt: text,
+    });
+
+    if (llmText) {
+      aiReply = llmText;
+    } else if (language === 'hi') {
       aiReply = `नमस्ते! मैं आपका LIFE OS AI सहायक हूँ। मैं आपके दैनिक कार्यों, समय सारिणी, उपस्थिति, और शैक्षणिक नोट्स की तैयारी में पूरी मदद कर सकता हूँ। आप क्या करना चाहते हैं?`;
     } else if (language === 'te') {
       aiReply = `నమస్కారం! నేను మీ LIFE OS AI అసిస్టెంట్‌ని. మీ దినచర్య పనులు, టైమ్‌టేబుల్, అటెండెన్స్ వివరాలు మరియు అకడమిక్ నోట్స్ తయారీలో నేను మీకు సహాయం చేయగలను. మీరు ఏమి చేయాలనుకుంటున్నారు?`;

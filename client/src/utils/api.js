@@ -77,8 +77,19 @@ export const api = {
   generateAcademicNotes: (payload) => apiRequest('/academic/generate-notes', { method: 'POST', body: payload }),
   getAcademicNotes: (id) => apiRequest(`/academic/notes/${id}`),
   searchQuestionPapers: (query) => apiRequest(`/academic/question-papers?${new URLSearchParams(query).toString()}`),
+  uploadQuestionPaper: (payload) => apiRequest('/academic/question-papers/upload', { method: 'POST', body: payload }),
   analyzePaperIntelligence: (subject) => apiRequest('/academic/question-papers/analyze', { method: 'POST', body: { subject } }),
   askStudyBuddy: (payload) => apiRequest('/academic/study-buddy/ask', { method: 'POST', body: payload }),
+
+  // Digital Files & Study Material Vault
+  listFiles: (params = '') => apiRequest(`/files${params ? `?${params}` : ''}`),
+  uploadFile: (payload) => apiRequest('/files/upload', { method: 'POST', body: payload }),
+  deleteFile: (id) => apiRequest(`/files/${id}`, { method: 'DELETE' }),
+
+  // Career & Campus Life
+  listCareerItems: (type = '') => apiRequest(`/career${type ? `?type=${type}` : ''}`),
+  createCareerItem: (payload) => apiRequest('/career', { method: 'POST', body: payload }),
+  deleteCareerItem: (id) => apiRequest(`/career/${id}`, { method: 'DELETE' }),
 
   // Contacts & Birthday Automation
   getContacts: () => apiRequest('/contacts'),

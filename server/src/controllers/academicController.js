@@ -1,7 +1,9 @@
 import { AcademicNote } from '../models/AcademicNote.js';
 import { QuestionPaper } from '../models/QuestionPaper.js';
+import { DigitalFile } from '../models/DigitalFile.js';
 import { generateStructuredNotes, createNotesPDF } from '../services/notesGeneratorService.js';
 import { analyzeQuestionPatterns, ensureDefaultQuestionPapers } from '../services/academicSearchService.js';
+import { generateLLMCompletion } from '../services/llmProviderService.js';
 
 export async function generateNotes(req, res, next) {
   try {
@@ -92,22 +94,88 @@ export async function analyzePapers(req, res, next) {
   }
 }
 
+export async function uploadQuestionPaper(req, res, next) {
+  try {
+    const { university, course = 'B.Tech', branch = 'Computer Science', semester = 5, subject, year = new Date().getFullYear(), rawQuestionsText = '' } = req.body;
+    if (!university || !subject) {
+      return res.status(400).json({ error: 'University and subject are required' });
+    }
+
+    const lines = String(rawQuestionsText || '')
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l.length > 8);
+
+    const parsedQuestions = lines.map((line, idx) => ({
+      questionText: line.replace(/^\d+[.)]\s*/, ''),
+      unit: `Unit ${(idx % 5) + 1}`,
+      marks: line.length > 70 ? 16 : 10,
+      frequencyCount: 3,
+      topics: [subject],
+    }));
+
+    const paper = await QuestionPaper.create({
+      userId: req.userId,
+      university,
+      course,
+      branch,
+      semester: Number(semester),
+      subject,
+      year: Number(year),
+      source: 'User Uploaded Question Paper',
+      isUserUploaded: true,
+      parsedQuestions,
+    });
+
+    res.status(201).json(paper);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function askStudyBuddy(req, res, next) {
   try {
     const { question, subject = 'Computer Science', topic = '' } = req.body;
     if (!question) return res.status(400).json({ error: 'Question is required' });
 
-    // Academic Study Buddy reasoning engine
-    const answer = `[Study Buddy Solution for ${subject}]\n\nQuestion: "${question}"\n\nCore Explanation:\nUnderstanding this concept requires examining the fundamental principles. In ${subject}, when dealing with ${topic || 'this topic'}, the primary mechanism relies on deterministic invariant handling and systematic transition steps.\n\nKey Step-by-Step Breakdown:\n1. Identify the input states, preconditions, and boundary constraints.\n2. Execute the state transitions adhering to standard algorithmic invariants.\n3. Validate the postcondition and verify asymptotic complexity bounds.\n\nExam Tip: When answering this in university exams, include the standard architectural flow diagram and cite at least two practical industrial use cases!`;
+    // Retrieve user's uploaded study materials for contextual answers
+    const studyDocs = await DigitalFile.find({
+      userId: req.userId,
+      category: { $in: ['study_material', 'question_paper'] },
+    }).sort({ createdAt: -1 }).limit(3);
+
+    const docContext = studyDocs
+      .filter(d => d.extractedText)
+      .map(d => `[Document: ${d.title}]\n${d.extractedText.slice(0, 1200)}`)
+      .join('\n\n');
+
+    let answer = await generateLLMCompletion({
+      systemPrompt: `You are LIFE OS AI Study Buddy helping a university student with ${subject}. Give clear, exam-ready, step-by-step explanations. Distinguish verified uploaded document references from general explanations.`,
+      userPrompt: `${docContext ? `Uploaded Study Context:\n${docContext}\n\n` : ''}Student Question (${topic || subject}): ${question}`,
+    });
+
+    if (!answer) {
+      answer = `[Study Buddy Solution for ${subject}]\n\nQuestion: "${question}"${docContext ? `\n\nReferenced Uploaded Material: ${studyDocs.map(d => d.title).join(', ')}` : ''}\n\nCore Explanation:\nUnderstanding this concept requires examining the fundamental principles. In ${subject}, when dealing with ${topic || 'this topic'}, the primary mechanism relies on deterministic invariant handling and systematic transition steps.\n\nKey Step-by-Step Breakdown:\n1. Identify the input states, preconditions, and boundary constraints.\n2. Execute the state transitions adhering to standard algorithmic invariants.\n3. Validate the postcondition and verify asymptotic complexity bounds.\n\nExam Tip: When answering this in university exams, include the standard architectural flow diagram and cite at least two practical industrial use cases!`;
+    }
 
     const flashcards = [
-      { front: `What is the core definition of ${topic || question.slice(0, 20)}?`, back: `The verified standard mechanism in ${subject} ensuring operational correctness.` },
-      { front: `What is the standard time complexity for this operation?`, back: `Typically O(log N) or O(N) depending on auxiliary memory bounds.` }
+      { front: `What is the core definition of ${topic || question.slice(0, 30)}?`, back: `The verified standard mechanism in ${subject} ensuring operational correctness.` },
+      { front: `What is the standard complexity / trade-off for this concept?`, back: `Balanced asymptotic bound with predictable memory overhead in production systems.` }
+    ];
+
+    const quiz = [
+      {
+        question: `Which foundational property is critical when solving "${topic || subject}" exam problems?`,
+        options: ['Deterministic state invariants', 'Random memory allocation', 'Ignoring boundary inputs', 'Skipping synchronization'],
+        correctIndex: 0,
+      }
     ];
 
     res.status(200).json({
       answer,
       flashcards,
+      quiz,
+      referencedDocuments: studyDocs.map(d => d.title),
       suggestedNextTopic: 'Process Synchronization and Locking Protocols',
     });
   } catch (err) {

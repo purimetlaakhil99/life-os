@@ -142,8 +142,8 @@ life-os/
 ## 6. Installation & Local Setup
 
 ### Live Demonstration & Public HTTPS URL
-- **Production Web Application**: [https://wiki-rob-packages-dial.trycloudflare.com](https://wiki-rob-packages-dial.trycloudflare.com)
-- **API Health Check**: [https://wiki-rob-packages-dial.trycloudflare.com/api/health](https://wiki-rob-packages-dial.trycloudflare.com/api/health)
+- **Production Web Application**: [https://same-jeff-genes-applied.trycloudflare.com](https://same-jeff-genes-applied.trycloudflare.com)
+- **API Health Check**: [https://same-jeff-genes-applied.trycloudflare.com/api/health](https://same-jeff-genes-applied.trycloudflare.com/api/health)
 - **GitHub Repository**: [https://github.com/purimetlaakhil99/life-os](https://github.com/purimetlaakhil99/life-os)
 
 ### Prerequisites

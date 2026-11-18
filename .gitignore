@@ -13,6 +13,7 @@ test-results/
 # Production builds
 dist/
 build/
+server/uploads/
 
 # Environment and sensitive secrets
 .env

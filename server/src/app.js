@@ -20,6 +20,8 @@ import goalRoutes from './routes/goalRoutes.js';
 import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import integrationRoutes from './routes/integrationRoutes.js';
+import fileRoutes from './routes/fileRoutes.js';
+import careerRoutes from './routes/careerRoutes.js';
 
 export const app = express();
 
@@ -77,6 +79,8 @@ app.use('/api/goals', goalRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/integrations', integrationRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/career', careerRoutes);
 
 // Serve static client build if it exists
 app.use(express.static(clientDistPath));

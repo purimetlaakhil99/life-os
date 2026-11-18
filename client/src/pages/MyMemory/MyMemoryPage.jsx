@@ -9,14 +9,19 @@ import {
   Tag,
   ShieldCheck,
   Check,
+  Upload,
+  FileText,
+  Download,
 } from 'lucide-react';
 import { api } from '../../utils/api';
 
 export function MyMemoryPage() {
   const [memories, setMemories] = useState([]);
+  const [files, setFiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
 
   // New Memory Modal/Form
   const [isAdding, setIsAdding] = useState(false);
@@ -27,7 +32,55 @@ export function MyMemoryPage() {
 
   useEffect(() => {
     loadMemories();
+    loadFiles();
   }, [selectedCategory]);
+
+  async function loadFiles() {
+    try {
+      const data = await api.listFiles();
+      setFiles(data);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const uploaded = await api.uploadFile({
+            title: file.name,
+            fileName: file.name,
+            mimeType: file.type || 'text/plain',
+            contentBase64: reader.result,
+            category: 'personal_reference',
+          });
+          setFiles(prev => [uploaded, ...prev]);
+        } catch (err) {
+          alert(`Upload failed: ${err.message}`);
+        } finally {
+          setIsUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setIsUploading(false);
+      alert(err.message);
+    }
+  }
+
+  async function handleDeleteFile(id) {
+    try {
+      await api.deleteFile(id);
+      setFiles(prev => prev.filter(f => f._id !== id));
+    } catch (err) {
+      alert(err.message);
+    }
+  }
 
   async function loadMemories() {
     try {
@@ -265,6 +318,62 @@ export function MyMemoryPage() {
               </div>
             </div>
           ))
+        )}
+      </div>
+
+      {/* Secure Digital Files & References Vault */}
+      <div className="card" style={{ marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileText size={18} color="#06b6d4" />
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f8fafc' }}>Digital Files & Personal References Vault</h3>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Upload PDFs, study notes, resumes, or images (max 5 MB, isolated per user)</span>
+            </div>
+          </div>
+
+          <label style={{ ...styles.addBtn, cursor: 'pointer' }}>
+            <Upload size={15} />
+            <span>{isUploading ? 'Uploading...' : 'Upload Document'}</span>
+            <input
+              type="file"
+              accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+              disabled={isUploading}
+            />
+          </label>
+        </div>
+
+        {files.length === 0 ? (
+          <p style={{ color: '#64748b', fontSize: '0.85rem', fontStyle: 'italic' }}>
+            No uploaded files yet. Uploaded documents are automatically searchable via AI Chat and Study Buddy.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {files.map((f) => (
+              <div key={f._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.7rem 0.9rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
+                <div>
+                  <strong style={{ color: '#f8fafc', fontSize: '0.9rem' }}>{f.title}</strong>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>
+                    {f.originalName} • {(f.sizeBytes / 1024).toFixed(1)} KB • {f.category.replace('_', ' ')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <a
+                    href={`/api/files/${f._id}/download`}
+                    download={f.originalName}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.65rem', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', fontSize: '0.75rem', fontWeight: 600 }}
+                  >
+                    <Download size={13} /> Download
+                  </a>
+                  <button onClick={() => handleDeleteFile(f._id)} style={styles.deleteBtn}>
+                    <Trash2 size={14} color="#64748b" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
