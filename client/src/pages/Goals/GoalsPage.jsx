@@ -23,9 +23,46 @@ export function GoalsPage() {
   const [category, setCategory] = useState('personal');
   const [targetMetric, setTargetMetric] = useState(100);
 
+  // Focus Timer, Evening Recap & AI Decision Assistant State
+  const [focusSeconds, setFocusSeconds] = useState(25 * 60);
+  const [focusRunning, setFocusRunning] = useState(false);
+  const [eveningRecap, setEveningRecap] = useState(null);
+  const [dilemma, setDilemma] = useState('');
+  const [decisionAdvice, setDecisionAdvice] = useState(null);
+  const [isThinkingDecision, setIsThinkingDecision] = useState(false);
+
   useEffect(() => {
     loadGoals();
+    api.getEveningRecap().then(setEveningRecap).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!focusRunning) return;
+    const timer = setInterval(() => {
+      setFocusSeconds((prev) => {
+        if (prev <= 1) {
+          setFocusRunning(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [focusRunning]);
+
+  async function handleAskDecision(e) {
+    e.preventDefault();
+    if (!dilemma.trim()) return;
+    setIsThinkingDecision(true);
+    try {
+      const res = await api.getDecisionAdvice({ dilemma });
+      setDecisionAdvice(res.recommendation);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsThinkingDecision(false);
+    }
+  }
 
   async function loadGoals() {
     try {
@@ -213,6 +250,75 @@ export function GoalsPage() {
               </div>
             );
           })
+        )}
+      </div>
+
+      {/* Focus Session Timer & Evening Recap */}
+      <div className="grid-2">
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f8fafc' }}>Deep Focus Session Timer</h3>
+            <span className="badge badge-info">{focusRunning ? 'Active' : 'Ready'}</span>
+          </div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#818cf8', textAlign: 'center', margin: '0.75rem 0' }}>
+            {String(Math.floor(focusSeconds / 60)).padStart(2, '0')}:{String(focusSeconds % 60).padStart(2, '0')}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button onClick={() => setFocusRunning(!focusRunning)} style={styles.saveBtn}>
+              {focusRunning ? 'Pause' : 'Start Focus'}
+            </button>
+            <button onClick={() => { setFocusRunning(false); setFocusSeconds(25 * 60); }} style={styles.cancelBtn}>
+              25m Pomodoro
+            </button>
+            <button onClick={() => { setFocusRunning(false); setFocusSeconds(50 * 60); }} style={styles.cancelBtn}>
+              50m Deep Work
+            </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+            <Sparkles size={17} color="#a855f7" />
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f8fafc' }}>Evening Recap</h3>
+          </div>
+          <p style={{ fontSize: '0.88rem', color: '#cbd5e1', lineHeight: 1.55, marginBottom: '0.75rem' }}>
+            {eveningRecap?.summary || 'Loading your end-of-day reflection and progress summary...'}
+          </p>
+          {eveningRecap && (
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <span className="badge badge-success">Completed Today: {eveningRecap.completedTodayCount}</span>
+              <span className="badge badge-primary">Habits Done: {eveningRecap.habitsDoneTodayCount}</span>
+              <span className="badge badge-warning">Queued Tomorrow: {eveningRecap.remainingPendingCount}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* AI Decision Assistant */}
+      <div className="card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <TrendingUp size={17} color="#06b6d4" />
+          <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#f8fafc' }}>AI Decision Assistant</h3>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.85rem' }}>
+          Describe an academic, career, or personal choice to get a structured pros/cons framework and next-step recommendation.
+        </p>
+        <form onSubmit={handleAskDecision} style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            placeholder="e.g. Should I focus on a summer research internship or full-stack startup internship?"
+            value={dilemma}
+            onChange={(e) => setDilemma(e.target.value)}
+            style={{ ...styles.input, flex: 1 }}
+          />
+          <button type="submit" disabled={isThinkingDecision} style={styles.saveBtn}>
+            {isThinkingDecision ? 'Analyzing...' : 'Analyze Decision'}
+          </button>
+        </form>
+        {decisionAdvice && (
+          <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', whiteSpace: 'pre-wrap', fontSize: '0.86rem', color: '#e2e8f0', lineHeight: 1.6 }}>
+            {decisionAdvice}
+          </div>
         )}
       </div>
     </div>

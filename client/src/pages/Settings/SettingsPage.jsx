@@ -440,11 +440,76 @@ export function SettingsPage() {
                 Close Preview
               </button>
             </div>
-            <p style={{ color: '#e2e8f0', fontSize: '0.9rem', fontStyle: 'italic', margin: 0 }}>
+            <p style={{ color: '#e2e8f0', fontSize: '0.9rem', fontStyle: 'italic', margin: '0 0 0.75rem 0' }}>
               {isGeneratingWish ? 'Generating personalized greeting...' : `"${generatedWish}"`}
             </p>
+            {!isGeneratingWish && generatedWish && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await api.scheduleBirthdayEmail(previewContactId, {
+                    autoBirthdayEmail: true,
+                    approvedCustomMessage: generatedWish,
+                  });
+                  alert('Message approved and scheduled in the durable recurring birthday worker!');
+                  setPreviewContactId(null);
+                  loadSettingsData();
+                }}
+                style={styles.saveBtn}
+              >
+                ✓ Approve Message & Enable Auto-Send
+              </button>
+            )}
           </div>
         )}
+
+        {/* Birthday Automation Queue & Sending History */}
+        {history.length > 0 && (
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+            <strong style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'block', marginBottom: '0.5rem' }}>
+              Scheduled Birthday Jobs & Dispatch History ({history.length})
+            </strong>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {history.slice(0, 5).map((job) => (
+                <div key={job._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', padding: '0.45rem 0.7rem', background: 'var(--bg-input)', borderRadius: '6px' }}>
+                  <span style={{ color: '#cbd5e1' }}>Job Key: <code>{job.idempotencyKey}</code> • Scheduled: {new Date(job.scheduledFor).toLocaleString()}</span>
+                  <span className={`badge badge-${job.status === 'completed' ? 'success' : (job.status === 'failed' ? 'danger' : 'info')}`}>{job.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Browser Push Notifications & Service Worker */}
+      <div className="card">
+        <div style={styles.cardHeader}>
+          <div>
+            <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.05rem' }}>Smart Browser Push Notifications</h3>
+            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+              Register the LIFE OS Service Worker for background task, class, and birthday alerts.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                alert('Browser push notifications are not supported in this browser.');
+                return;
+              }
+              const perm = await Notification.requestPermission();
+              if (perm === 'granted') {
+                await navigator.serviceWorker.register('/sw.js');
+                alert('Browser Push Notifications enabled and Service Worker registered!');
+              } else {
+                alert('Notification permission was not granted.');
+              }
+            }}
+            style={styles.addContactBtn}
+          >
+            Enable Push Alerts
+          </button>
+        </div>
       </div>
 
       {/* 3. Subscriptions & Bills */}

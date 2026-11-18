@@ -30,6 +30,21 @@ export function MyMemoryPage() {
   const [newCategory, setNewCategory] = useState('preference');
   const [newImportance, setNewImportance] = useState(3);
 
+  // Edit / Correct Memory State
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+
+  async function handleSaveEdit(id) {
+    try {
+      const updated = await api.updateMemory(id, { title: editTitle, content: editContent });
+      setMemories(prev => prev.map(m => m._id === id ? updated : m));
+      setEditingId(null);
+    } catch (err) {
+      alert(`Failed to update memory: ${err.message}`);
+    }
+  }
+
   useEffect(() => {
     loadMemories();
     loadFiles();
@@ -291,22 +306,63 @@ export function MyMemoryPage() {
           memories.map((m) => (
             <div key={m._id} className="card" style={styles.memCard}>
               <div style={styles.memCardHeader}>
-                <div>
+                <div style={{ flex: 1 }}>
                   <span className="badge badge-info" style={{ marginBottom: '0.35rem' }}>
                     {m.category.replace('_', ' ')}
                   </span>
-                  <strong style={styles.memTitle}>{m.title}</strong>
+                  {editingId === m._id ? (
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      style={{ ...styles.input, marginTop: '0.35rem' }}
+                    />
+                  ) : (
+                    <strong style={styles.memTitle}>{m.title}</strong>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleDeleteMemory(m._id)}
-                  style={styles.deleteBtn}
-                  title="Delete memory"
-                >
-                  <Trash2 size={15} color="#64748b" />
-                </button>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  {editingId === m._id ? (
+                    <button
+                      onClick={() => handleSaveEdit(m._id)}
+                      style={styles.deleteBtn}
+                      title="Save correction"
+                    >
+                      <Check size={15} color="#10b981" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditingId(m._id);
+                        setEditTitle(m.title);
+                        setEditContent(m.content);
+                      }}
+                      style={styles.deleteBtn}
+                      title="Edit / correct memory"
+                    >
+                      <Edit2 size={14} color="#818cf8" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteMemory(m._id)}
+                    style={styles.deleteBtn}
+                    title="Delete memory"
+                  >
+                    <Trash2 size={15} color="#64748b" />
+                  </button>
+                </div>
               </div>
 
-              <p style={styles.memContent}>{m.content}</p>
+              {editingId === m._id ? (
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={3}
+                  style={{ ...styles.input, resize: 'vertical' }}
+                />
+              ) : (
+                <p style={styles.memContent}>{m.content}</p>
+              )}
 
               <div style={styles.memFooter}>
                 <span style={styles.sourceTag}>

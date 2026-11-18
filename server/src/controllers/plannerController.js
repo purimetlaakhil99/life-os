@@ -107,3 +107,56 @@ export async function deleteEvent(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * Find suggested free 60-minute time slots for a given date considering events and class timetable
+ */
+export async function getSuggestedTimeSlots(req, res, next) {
+  try {
+    const dateStr = req.query.date || new Date().toISOString().split('T')[0];
+    const startOfDay = new Date(`${dateStr}T08:00:00`);
+    const endOfDay = new Date(`${dateStr}T21:00:00`);
+
+    const events = await Event.find({
+      userId: req.userId,
+      startTime: { $lt: endOfDay },
+      endTime: { $gt: startOfDay },
+    });
+
+    const profile = await StudentProfile.findOne({ userId: req.userId });
+    const busyBlocks = events.map(e => ({ start: new Date(e.startTime).getTime(), end: new Date(e.endTime).getTime() }));
+
+    if (profile?.timetable) {
+      const dow = startOfDay.getDay() || 7;
+      profile.timetable.filter(t => t.dayOfWeek === dow).forEach(cls => {
+        const [sh, sm] = cls.startTime.split(':').map(Number);
+        const [eh, em] = cls.endTime.split(':').map(Number);
+        const s = new Date(startOfDay);
+        s.setHours(sh, sm, 0, 0);
+        const e = new Date(startOfDay);
+        e.setHours(eh, em, 0, 0);
+        busyBlocks.push({ start: s.getTime(), end: e.getTime() });
+      });
+    }
+
+    const freeSlots = [];
+    for (let hour = 8; hour <= 20; hour++) {
+      const slotStart = new Date(startOfDay);
+      slotStart.setHours(hour, 0, 0, 0);
+      const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+      const hasOverlap = busyBlocks.some(b => b.start < slotEnd.getTime() && b.end > slotStart.getTime());
+      if (!hasOverlap) {
+        freeSlots.push({
+          startTime: `${String(hour).padStart(2, '0')}:00`,
+          endTime: `${String(hour + 1).padStart(2, '0')}:00`,
+          label: `${String(hour).padStart(2, '0')}:00 – ${String(hour + 1).padStart(2, '0')}:00`,
+        });
+      }
+    }
+
+    res.status(200).json({ date: dateStr, suggestedSlots: freeSlots.slice(0, 6) });
+  } catch (err) {
+    next(err);
+  }
+}

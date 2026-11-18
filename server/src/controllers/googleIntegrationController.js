@@ -65,3 +65,45 @@ export async function disconnectGoogle(req, res, next) {
     next(err);
   }
 }
+
+export async function draftEmailForReview(req, res, next) {
+  try {
+    const { recipient, purpose, tone = 'professional' } = req.body;
+    if (!recipient || !purpose) {
+      return res.status(400).json({ error: 'recipient and purpose are required' });
+    }
+
+    const subject = `Regarding: ${purpose.slice(0, 60)}`;
+    const body = `Dear ${recipient},\n\nI hope this message finds you well. I am writing regarding ${purpose}.\n\nPlease let me know a convenient time to discuss or confirm the next steps.\n\nBest regards,\n${req.user.name}`;
+
+    res.status(200).json({
+      requiresReview: true,
+      draft: { to: recipient, subject, body, tone },
+      notice: 'Ordinary emails always require your explicit review and approval before sending.',
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function searchAuthorizedInbox(req, res, next) {
+  try {
+    const user = await User.findById(req.userId);
+    const hasReadScope = (user?.googleAuth?.scope || []).includes('https://www.googleapis.com/auth/gmail.readonly');
+
+    if (!user?.googleAuth?.connected || !hasReadScope) {
+      return res.status(403).json({
+        error: 'Separate Gmail read permission (gmail.readonly) is required before reading or searching inbox messages.',
+        requiredScope: 'https://www.googleapis.com/auth/gmail.readonly',
+      });
+    }
+
+    res.status(200).json({
+      messages: [],
+      deadlinesExtracted: [],
+      summary: 'Authorized Gmail inbox connection active.',
+    });
+  } catch (err) {
+    next(err);
+  }
+}

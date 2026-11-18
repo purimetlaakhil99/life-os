@@ -13,6 +13,8 @@ import { api } from '../../utils/api';
 
 export function PlannerPage() {
   const [schedule, setSchedule] = useState({ events: [], tasks: [], classes: [] });
+  const [freeSlots, setFreeSlots] = useState([]);
+  const [viewMode, setViewMode] = useState('daily'); // 'daily' | 'weekly'
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +28,7 @@ export function PlannerPage() {
 
   useEffect(() => {
     loadSchedule();
-  }, [selectedDate]);
+  }, [selectedDate, viewMode]);
 
   async function loadSchedule() {
     try {
@@ -34,10 +36,17 @@ export function PlannerPage() {
       const start = new Date(selectedDate);
       start.setHours(0, 0, 0, 0);
       const end = new Date(selectedDate);
+      if (viewMode === 'weekly') {
+        end.setDate(end.getDate() + 6);
+      }
       end.setHours(23, 59, 59, 999);
 
-      const data = await api.getSchedule(start.toISOString(), end.toISOString());
+      const [data, slotData] = await Promise.all([
+        api.getSchedule(start.toISOString(), end.toISOString()),
+        api.getFreeSlots(selectedDate).catch(() => ({ suggestedSlots: [] })),
+      ]);
       setSchedule(data);
+      setFreeSlots(slotData.suggestedSlots || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -92,16 +101,71 @@ export function PlannerPage() {
           <p style={styles.subtitle}>Unified timeline merging personal events, classes, and deadlines with conflict alerts</p>
         </div>
 
-        <div style={styles.datePickerWrap}>
-          <CalendarIcon size={16} color="#818cf8" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            style={styles.dateInput}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '0.2rem' }}>
+            {['daily', 'weekly'].map(m => (
+              <button
+                key={m}
+                onClick={() => setViewMode(m)}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  textTransform: 'capitalize',
+                  background: viewMode === m ? 'var(--accent-primary)' : 'transparent',
+                  color: viewMode === m ? '#fff' : '#94a3b8',
+                }}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          <div style={styles.datePickerWrap}>
+            <CalendarIcon size={16} color="#818cf8" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={styles.dateInput}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Suggested Free Time Slots */}
+      {freeSlots.length > 0 && (
+        <div className="card" style={{ padding: '0.9rem 1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+            <Sparkles size={15} color="#06b6d4" />
+            <strong style={{ fontSize: '0.85rem', color: '#f8fafc' }}>Suggested Free Time Slots (Click to schedule):</strong>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {freeSlots.map((slot) => (
+              <button
+                key={slot.label}
+                type="button"
+                onClick={() => {
+                  setStartTime(slot.startTime);
+                  setEndTime(slot.endTime);
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 'var(--radius-full)',
+                  background: 'rgba(6, 182, 212, 0.12)',
+                  border: '1px solid rgba(6, 182, 212, 0.3)',
+                  color: '#22d3ee',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                }}
+              >
+                {slot.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {conflictWarning && (
         <div style={styles.conflictAlert}>

@@ -4,6 +4,8 @@ import {
   handleCallback,
   getGoogleStatus,
   disconnectGoogle,
+  draftEmailForReview,
+  searchAuthorizedInbox,
 } from '../controllers/googleIntegrationController.js';
 import { requireAuth } from '../middlewares/auth.js';
 
@@ -16,5 +18,7 @@ router.get('/google/callback', handleCallback);
 router.get('/google/auth-url', requireAuth, getAuthUrl);
 router.get('/google/status', requireAuth, getGoogleStatus);
 router.post('/google/disconnect', requireAuth, disconnectGoogle);
+router.post('/gmail/draft', requireAuth, draftEmailForReview);
+router.get('/gmail/search', requireAuth, searchAuthorizedInbox);
 
 export default router;

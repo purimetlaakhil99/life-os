@@ -46,6 +46,8 @@ export const api = {
   chat: (payload) => apiRequest('/ai/chat', { method: 'POST', body: payload }),
   getConversations: () => apiRequest('/ai/conversations'),
   getBriefing: () => apiRequest('/ai/briefing'),
+  getEveningRecap: () => apiRequest('/ai/evening-recap'),
+  getDecisionAdvice: (payload) => apiRequest('/ai/decision-assistant', { method: 'POST', body: payload }),
   previewAction: (payload) => apiRequest('/ai/preview-action', { method: 'POST', body: payload }),
   confirmAction: (payload) => apiRequest('/ai/confirm-action', { method: 'POST', body: payload }),
 
@@ -56,6 +58,7 @@ export const api = {
   toggleTask: (id) => apiRequest(`/tasks/${id}/toggle`, { method: 'PATCH' }),
   deleteTask: (id) => apiRequest(`/tasks/${id}`, { method: 'DELETE' }),
   getSchedule: (start, end) => apiRequest(`/planner/schedule?start=${start}&end=${end}`),
+  getFreeSlots: (date) => apiRequest(`/planner/free-slots?date=${date}`),
   createEvent: (event) => apiRequest('/planner/events', { method: 'POST', body: event }),
   deleteEvent: (id) => apiRequest(`/planner/events/${id}`, { method: 'DELETE' }),
 
@@ -124,9 +127,11 @@ export const api = {
   markNotificationRead: (id) => apiRequest(`/notifications/${id}/read`, { method: 'PATCH' }),
   markAllNotificationsRead: () => apiRequest('/notifications/read-all', { method: 'POST' }),
   snoozeNotification: (id, minutes) => apiRequest(`/notifications/${id}/snooze`, { method: 'POST', body: { minutes } }),
+  subscribePush: (subscription) => apiRequest('/notifications/subscribe-push', { method: 'POST', body: { subscription } }),
 
   // Integrations & Google OAuth
   getGoogleAuthUrl: () => apiRequest('/integrations/google/auth-url'),
   getGoogleStatus: () => apiRequest('/integrations/google/status'),
-  disconnectGoogle: () => apiRequest('/integrations/google/disconnect', { method: 'POST' })
+  disconnectGoogle: () => apiRequest('/integrations/google/disconnect', { method: 'POST' }),
+  draftGmailEmail: (payload) => apiRequest('/integrations/gmail/draft', { method: 'POST', body: payload }),
 };

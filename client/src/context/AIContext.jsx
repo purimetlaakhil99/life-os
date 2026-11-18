@@ -25,6 +25,25 @@ export function AIProvider({ children }) {
     voiceEngine.setLanguage(language);
   }, [language]);
 
+  // Hydrate persisted conversation history on mount
+  useEffect(() => {
+    api.getConversations()
+      .then((data) => {
+        if (data?.messages && data.messages.length > 0) {
+          setMessages(data.messages.map((m, idx) => ({
+            id: m._id || `hist-${idx}`,
+            sender: m.sender,
+            text: m.text,
+            mode: m.mode || 'chat',
+            executedActions: m.executedActions || [],
+            memoryRetrieved: m.memoryRetrieved || [],
+            timestamp: m.timestamp,
+          })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const sendMessage = useCallback(async (userText, mode = 'chat') => {
     if (!userText || !userText.trim()) return;
 

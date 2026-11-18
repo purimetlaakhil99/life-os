@@ -1,4 +1,6 @@
 // LIFE OS Durable Background Job Scheduler & Notification Engine
+import webpush from 'web-push';
+import { ENV } from '../config/env.js';
 import { ScheduledJob } from '../models/ScheduledJob.js';
 import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
@@ -6,6 +8,24 @@ import { Contact } from '../models/Contact.js';
 import { Task } from '../models/Task.js';
 import { sendGmailMessage } from './gmailService.js';
 import { generateBirthdayMessage } from './aiBrainService.js';
+
+if (ENV.VAPID_PUBLIC_KEY && ENV.VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(ENV.VAPID_SUBJECT, ENV.VAPID_PUBLIC_KEY, ENV.VAPID_PRIVATE_KEY);
+  } catch (e) {
+    console.warn('[WebPush] Invalid VAPID keys, push disabled:', e.message);
+  }
+}
+
+async function sendWebPushIfSubscribed(user, payload) {
+  if (!ENV.VAPID_PUBLIC_KEY || !ENV.VAPID_PRIVATE_KEY) return;
+  if (!user?.pushSubscription?.endpoint) return;
+  try {
+    await webpush.sendNotification(user.pushSubscription, JSON.stringify(payload));
+  } catch (err) {
+    console.warn('[WebPush] Dispatch failed:', err.message);
+  }
+}
 
 let schedulerInterval = null;
 
@@ -129,27 +149,33 @@ async function executeJob(job) {
     case 'task_reminder': {
       const task = await Task.findById(payload.taskId);
       if (task && task.status !== 'completed') {
+        const title = `Task Reminder: ${task.title}`;
+        const message = `Due reminder: ${task.title} (Priority: ${task.priority.toUpperCase()})`;
         await Notification.create({
           userId,
-          title: `Task Reminder: ${task.title}`,
-          message: `Due reminder: ${task.title} (Priority: ${task.priority.toUpperCase()})`,
+          title,
+          message,
           type: 'reminder',
           priority: task.priority === 'urgent' ? 'urgent' : 'high',
           actionUrl: '/my-day',
         });
+        await sendWebPushIfSubscribed(user, { title, body: message, url: '/my-day' });
       }
       break;
     }
 
     case 'class_reminder': {
+      const title = `Upcoming Class: ${payload.subjectName}`;
+      const message = `Class starts at ${payload.startTime} in ${payload.classroom || 'Lecture Hall'} (${payload.faculty || 'Faculty'}).`;
       await Notification.create({
         userId,
-        title: `Upcoming Class: ${payload.subjectName}`,
-        message: `Class starts at ${payload.startTime} in ${payload.classroom || 'Lecture Hall'} (${payload.faculty || 'Faculty'}).`,
+        title,
+        message,
         type: 'academic',
         priority: 'high',
         actionUrl: '/student-life',
       });
+      await sendWebPushIfSubscribed(user, { title, body: message, url: '/student-life' });
       break;
     }
 

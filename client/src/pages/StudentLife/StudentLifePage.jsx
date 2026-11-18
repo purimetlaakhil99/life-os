@@ -640,6 +640,27 @@ export function StudentLifePage() {
                 </div>
               </div>
 
+              {paperIntelligence.practiceMCQs && paperIntelligence.practiceMCQs.length > 0 && (
+                <div style={{ marginBottom: '1rem', padding: '0.85rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
+                  <strong style={{ fontSize: '0.85rem', color: '#818cf8', display: 'block', marginBottom: '0.5rem' }}>
+                    📝 Practice MCQs & Viva Questions:
+                  </strong>
+                  {paperIntelligence.practiceMCQs.map((mcq, idx) => (
+                    <div key={idx} style={{ marginBottom: '0.5rem', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                      <div><strong>Q{idx + 1}:</strong> {mcq.question}</div>
+                      <div style={{ color: '#34d399', fontSize: '0.78rem' }}>Answer: {mcq.options[mcq.correctAnswer]} — {mcq.explanation}</div>
+                    </div>
+                  ))}
+                  {paperIntelligence.vivaQuestions && (
+                    <ul style={{ paddingLeft: '1.1rem', marginTop: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
+                      {paperIntelligence.vivaQuestions.map((vq, idx) => (
+                        <li key={idx}>Viva {idx + 1}: {vq}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               <p style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
                 {paperIntelligence.disclaimer}
               </p>
