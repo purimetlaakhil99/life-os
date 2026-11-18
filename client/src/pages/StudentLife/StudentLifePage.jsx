@@ -44,16 +44,28 @@ export function StudentLifePage() {
   const [studyAnswer, setStudyAnswer] = useState(null);
   const [isAskingBuddy, setIsAskingBuddy] = useState(false);
 
-  // Performance What-If Simulator State
+  // Performance What-If Simulator & SGPA State
   const [simCurrentCGPA, setSimCurrentCGPA] = useState(8.2);
   const [simCompletedCredits, setSimCompletedCredits] = useState(70);
   const [simUpcomingCredits, setSimUpcomingCredits] = useState(24);
   const [simTargetCGPA, setSimTargetCGPA] = useState(8.7);
   const [whatIfResult, setWhatIfResult] = useState(null);
+  const [sgpaSubjects, setSgpaSubjects] = useState([
+    { subject: 'DBMS', credits: 4, grade: 'O' },
+    { subject: 'Operating Systems', credits: 4, grade: 'A+' },
+    { subject: 'Computer Networks', credits: 3, grade: 'A' },
+  ]);
+  const [sgpaResult, setSgpaResult] = useState(null);
 
-  // DSA / Career State
-  const [dsaCategory, setDsaCategory] = useState('Binary Search & Trees');
-  const [dsaProblemsSolved, setDsaProblemsSolved] = useState(145);
+  // Timetable & Assignment & Paper Upload Forms
+  const [newSlot, setNewSlot] = useState({ dayOfWeek: 1, subjectName: '', classroom: '', faculty: '', startTime: '09:00', endTime: '10:00' });
+  const [newAssign, setNewAssign] = useState({ title: '', subjectName: '', dueDate: '', type: 'assignment' });
+  const [uploadPaper, setUploadPaper] = useState({ university: '', subject: '', semester: 5, year: 2025, rawQuestionsText: '' });
+  const [showPaperUpload, setShowPaperUpload] = useState(false);
+
+  // Persistent Career & Campus Items
+  const [careerItems, setCareerItems] = useState([]);
+  const [newCareer, setNewCareer] = useState({ type: 'dsa_problem', title: '', organization: '', amount: '' });
 
   useEffect(() => {
     loadStudentData();
@@ -62,22 +74,117 @@ export function StudentLifePage() {
   async function loadStudentData() {
     try {
       setLoading(true);
-      const [profData, attData, assignData, timeData, papersData] = await Promise.all([
+      const [profData, attData, assignData, timeData, papersData, careerData] = await Promise.all([
         api.getStudentProfile().catch(() => null),
         api.getAttendance().catch(() => []),
         api.getAssignments().catch(() => []),
         api.getTimetable().catch(() => []),
         api.searchQuestionPapers({}).catch(() => []),
+        api.listCareerItems().catch(() => []),
       ]);
       setProfile(profData);
       setAttendanceRecords(attData);
       setAssignments(assignData);
       setTimetable(timeData);
       setPapersList(papersData);
+      setCareerItems(careerData);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAddTimetableSlot(e) {
+    e.preventDefault();
+    if (!newSlot.subjectName.trim()) return;
+    try {
+      const updated = await api.updateTimetableSlot(newSlot);
+      setTimetable(updated);
+      setNewSlot({ dayOfWeek: 1, subjectName: '', classroom: '', faculty: '', startTime: '09:00', endTime: '10:00' });
+      loadStudentData();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleDeleteTimetableSlot(id) {
+    try {
+      const updated = await api.deleteTimetableSlot(id);
+      setTimetable(updated);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleCreateAssignment(e) {
+    e.preventDefault();
+    if (!newAssign.title.trim() || !newAssign.subjectName.trim()) return;
+    try {
+      const created = await api.createAssignment({
+        ...newAssign,
+        dueDate: newAssign.dueDate || new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
+      });
+      setAssignments(prev => [created, ...prev]);
+      setNewAssign({ title: '', subjectName: '', dueDate: '', type: 'assignment' });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleToggleAssignment(a) {
+    const nextStatus = a.status === 'submitted' ? 'pending' : 'submitted';
+    try {
+      const updated = await api.updateAssignment(a._id, { status: nextStatus });
+      setAssignments(prev => prev.map(item => item._id === a._id ? updated : item));
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleUploadQuestionPaper(e) {
+    e.preventDefault();
+    if (!uploadPaper.university.trim() || !uploadPaper.subject.trim()) return;
+    try {
+      const created = await api.uploadQuestionPaper(uploadPaper);
+      setPapersList(prev => [created, ...prev]);
+      setUploadPaper({ university: '', subject: '', semester: 5, year: 2025, rawQuestionsText: '' });
+      setShowPaperUpload(false);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleComputeSGPA() {
+    try {
+      const res = await api.calculateWhatIfGPA({ subjects: sgpaSubjects });
+      setSgpaResult(res);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleAddCareerItem(e) {
+    e.preventDefault();
+    if (!newCareer.title.trim()) return;
+    try {
+      const created = await api.createCareerItem({
+        ...newCareer,
+        amount: Number(newCareer.amount) || 0,
+      });
+      setCareerItems(prev => [created, ...prev]);
+      setNewCareer({ type: 'dsa_problem', title: '', organization: '', amount: '' });
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function handleDeleteCareerItem(id) {
+    try {
+      await api.deleteCareerItem(id);
+      setCareerItems(prev => prev.filter(i => i._id !== id));
+    } catch (err) {
+      alert(err.message);
     }
   }
 
@@ -414,9 +521,18 @@ export function StudentLifePage() {
       {activeTab === 'papers' && (
         <div style={styles.tabContent}>
           <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <h3>Previous Year Question Papers Repository</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0 }}>Previous Year Question Papers Repository</h3>
+              <button
+                type="button"
+                onClick={() => setShowPaperUpload(!showPaperUpload)}
+                style={styles.analyzeBtn}
+              >
+                <Plus size={14} /> Upload Own Question Paper
+              </button>
+            </div>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
-              Real archived university exam papers. Run statistical question frequency and high-yield topic analysis.
+              Real archived university exam papers and user uploads. Run statistical question frequency and high-yield topic analysis.
             </p>
 
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -428,13 +544,61 @@ export function StudentLifePage() {
                 style={{ ...styles.input, flex: 1 }}
               />
               <button
-                onClick={() => loadStudentData()}
+                onClick={async () => {
+                  const res = await api.searchQuestionPapers(searchSubject ? { subject: searchSubject } : {});
+                  setPapersList(res);
+                }}
                 style={styles.generateBtn}
               >
                 <Search size={15} />
                 <span>Search Papers</span>
               </button>
             </div>
+
+            {showPaperUpload && (
+              <form onSubmit={handleUploadQuestionPaper} style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    placeholder="University (e.g. JNTU Hyderabad)"
+                    value={uploadPaper.university}
+                    onChange={(e) => setUploadPaper({ ...uploadPaper, university: e.target.value })}
+                    style={{ ...styles.input, flex: 1 }}
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="Subject (e.g. Operating Systems)"
+                    value={uploadPaper.subject}
+                    onChange={(e) => setUploadPaper({ ...uploadPaper, subject: e.target.value })}
+                    style={{ ...styles.input, flex: 1 }}
+                    required
+                  />
+                  <input
+                    type="number"
+                    placeholder="Semester"
+                    value={uploadPaper.semester}
+                    onChange={(e) => setUploadPaper({ ...uploadPaper, semester: e.target.value })}
+                    style={{ ...styles.input, width: '90px' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Year"
+                    value={uploadPaper.year}
+                    onChange={(e) => setUploadPaper({ ...uploadPaper, year: e.target.value })}
+                    style={{ ...styles.input, width: '90px' }}
+                  />
+                </div>
+                <textarea
+                  rows={3}
+                  placeholder="Paste exam questions (one per line) to automatically include them in repeated question pattern analysis..."
+                  value={uploadPaper.rawQuestionsText}
+                  onChange={(e) => setUploadPaper({ ...uploadPaper, rawQuestionsText: e.target.value })}
+                  style={{ ...styles.input, resize: 'vertical' }}
+                />
+                <button type="submit" style={styles.generateBtn}>Save & Index Question Paper</button>
+              </form>
+            )}
           </div>
 
           {/* Intelligence Analysis Output if Selected */}
@@ -582,8 +746,76 @@ export function StudentLifePage() {
       {/* TAB CONTENT: SGPA & CGPA SIMULATOR */}
       {activeTab === 'performance' && (
         <div style={styles.tabContent}>
+          <div className="card" style={{ marginBottom: '1rem' }}>
+            <h3>SGPA Subject-Grade Calculator</h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
+              Enter your current semester subjects, credits, and grades to compute weighted SGPA.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+              {sgpaSubjects.map((s, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    value={s.subject}
+                    onChange={(e) => {
+                      const next = [...sgpaSubjects];
+                      next[idx].subject = e.target.value;
+                      setSgpaSubjects(next);
+                    }}
+                    placeholder="Subject name"
+                    style={{ ...styles.input, flex: 2 }}
+                  />
+                  <input
+                    type="number"
+                    value={s.credits}
+                    onChange={(e) => {
+                      const next = [...sgpaSubjects];
+                      next[idx].credits = Number(e.target.value);
+                      setSgpaSubjects(next);
+                    }}
+                    placeholder="Credits"
+                    style={{ ...styles.input, width: '90px' }}
+                  />
+                  <select
+                    value={s.grade}
+                    onChange={(e) => {
+                      const next = [...sgpaSubjects];
+                      next[idx].grade = e.target.value;
+                      setSgpaSubjects(next);
+                    }}
+                    style={{ ...styles.input, width: '100px' }}
+                  >
+                    {['O', 'A+', 'A', 'B+', 'B', 'C', 'P', 'F'].map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button
+                type="button"
+                onClick={() => setSgpaSubjects([...sgpaSubjects, { subject: '', credits: 3, grade: 'A' }])}
+                style={styles.analyzeBtn}
+              >
+                + Add Subject
+              </button>
+              <button type="button" onClick={handleComputeSGPA} style={styles.generateBtn}>
+                Calculate SGPA
+              </button>
+            </div>
+            {sgpaResult && (
+              <div style={{ marginTop: '1rem', padding: '0.85rem', background: 'rgba(99, 102, 241, 0.12)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                <strong style={{ color: '#818cf8', fontSize: '1.1rem' }}>Computed SGPA: {sgpaResult.sgpa} / 10.0</strong>
+                <span style={{ display: 'block', fontSize: '0.8rem', color: '#94a3b8' }}>
+                  Total Credits: {sgpaResult.totalCredits} • Earned Grade Points: {sgpaResult.earnedPoints}
+                </span>
+              </div>
+            )}
+          </div>
+
           <div className="card">
-            <h3>Academic Performance & What-If CGPA Simulator</h3>
+            <h3>What-If CGPA Simulator</h3>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1.25rem' }}>
               Simulate required SGPA across upcoming semester credits to achieve target graduation honours.
             </p>
@@ -659,6 +891,61 @@ export function StudentLifePage() {
       {/* TAB CONTENT: TIMETABLE */}
       {activeTab === 'timetable' && (
         <div style={styles.tabContent}>
+          <form onSubmit={handleAddTimetableSlot} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <h3 style={{ margin: 0 }}>Add Class Timetable Slot</h3>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <select
+                value={newSlot.dayOfWeek}
+                onChange={(e) => setNewSlot({ ...newSlot, dayOfWeek: Number(e.target.value) })}
+                style={{ ...styles.input, width: '130px' }}
+              >
+                <option value={1}>Monday</option>
+                <option value={2}>Tuesday</option>
+                <option value={3}>Wednesday</option>
+                <option value={4}>Thursday</option>
+                <option value={5}>Friday</option>
+                <option value={6}>Saturday</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Subject Name (e.g. Machine Learning)"
+                value={newSlot.subjectName}
+                onChange={(e) => setNewSlot({ ...newSlot, subjectName: e.target.value })}
+                style={{ ...styles.input, flex: 1.5 }}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Classroom (e.g. LH-305)"
+                value={newSlot.classroom}
+                onChange={(e) => setNewSlot({ ...newSlot, classroom: e.target.value })}
+                style={{ ...styles.input, flex: 1 }}
+              />
+              <input
+                type="text"
+                placeholder="Faculty"
+                value={newSlot.faculty}
+                onChange={(e) => setNewSlot({ ...newSlot, faculty: e.target.value })}
+                style={{ ...styles.input, flex: 1 }}
+              />
+              <input
+                type="time"
+                value={newSlot.startTime}
+                onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
+                style={{ ...styles.input, width: '120px' }}
+              />
+              <input
+                type="time"
+                value={newSlot.endTime}
+                onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
+                style={{ ...styles.input, width: '120px' }}
+              />
+              <button type="submit" style={styles.generateBtn}>
+                <Plus size={15} /> Add Class
+              </button>
+            </div>
+          </form>
+
           <div className="card">
             <h3>Weekly Class Timetable</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
@@ -670,16 +957,24 @@ export function StudentLifePage() {
                     <div>
                       <strong style={{ color: '#f8fafc', fontSize: '0.95rem' }}>{slot.subjectName}</strong>
                       <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block' }}>
-                        Room: {slot.classroom} • Faculty: {slot.faculty}
+                        Room: {slot.classroom || 'Main Hall'} • Faculty: {slot.faculty || 'Assigned Faculty'}
                       </span>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.85rem', color: '#06b6d4', fontWeight: 600 }}>
-                        {slot.startTime} – {slot.endTime}
-                      </span>
-                      <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>
-                        Day {slot.dayOfWeek}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#06b6d4', fontWeight: 600 }}>
+                          {slot.startTime} – {slot.endTime}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>
+                          {['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][slot.dayOfWeek] || `Day ${slot.dayOfWeek}`}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteTimetableSlot(slot._id)}
+                        style={{ ...styles.absentBtn, flex: 'none', padding: '0.3rem 0.6rem' }}
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
                 ))
@@ -692,6 +987,44 @@ export function StudentLifePage() {
       {/* TAB CONTENT: ASSIGNMENTS */}
       {activeTab === 'assignments' && (
         <div style={styles.tabContent}>
+          <form onSubmit={handleCreateAssignment} className="card" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Assignment / Exam Title"
+              value={newAssign.title}
+              onChange={(e) => setNewAssign({ ...newAssign, title: e.target.value })}
+              style={{ ...styles.input, flex: 2 }}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Subject"
+              value={newAssign.subjectName}
+              onChange={(e) => setNewAssign({ ...newAssign, subjectName: e.target.value })}
+              style={{ ...styles.input, flex: 1 }}
+              required
+            />
+            <select
+              value={newAssign.type}
+              onChange={(e) => setNewAssign({ ...newAssign, type: e.target.value })}
+              style={{ ...styles.input, width: '130px' }}
+            >
+              <option value="assignment">Assignment</option>
+              <option value="exam">Exam</option>
+              <option value="project">Project</option>
+              <option value="lab_record">Lab Record</option>
+            </select>
+            <input
+              type="date"
+              value={newAssign.dueDate}
+              onChange={(e) => setNewAssign({ ...newAssign, dueDate: e.target.value })}
+              style={{ ...styles.input, width: '150px' }}
+            />
+            <button type="submit" style={styles.generateBtn}>
+              <Plus size={15} /> Add
+            </button>
+          </form>
+
           <div className="card">
             <h3>Assignments & Examination Tracker</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem' }}>
@@ -703,12 +1036,16 @@ export function StudentLifePage() {
                     <div>
                       <strong style={{ color: '#f8fafc' }}>{a.title}</strong>
                       <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block' }}>
-                        Subject: {a.subjectName} • Due: {new Date(a.dueDate).toLocaleDateString()}
+                        Subject: {a.subjectName} • Type: {a.type} • Due: {new Date(a.dueDate).toLocaleDateString()}
                       </span>
                     </div>
-                    <span className={`badge badge-${a.status === 'submitted' ? 'success' : 'warning'}`}>
-                      {a.status}
-                    </span>
+                    <button
+                      onClick={() => handleToggleAssignment(a)}
+                      className={`badge badge-${a.status === 'submitted' ? 'success' : 'warning'}`}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {a.status === 'submitted' ? '✓ Submitted' : 'Mark Submitted'}
+                    </button>
                   </div>
                 ))
               )}
@@ -717,40 +1054,97 @@ export function StudentLifePage() {
         </div>
       )}
 
-      {/* TAB CONTENT: CAREER & DSA TRACK */}
+      {/* TAB CONTENT: CAREER & CAMPUS LIFE */}
       {activeTab === 'career' && (
         <div style={styles.tabContent}>
+          <form onSubmit={handleAddCareerItem} className="card" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <select
+              value={newCareer.type}
+              onChange={(e) => setNewCareer({ ...newCareer, type: e.target.value })}
+              style={{ ...styles.input, width: '160px' }}
+            >
+              <option value="dsa_problem">DSA Problem</option>
+              <option value="internship">Internship Application</option>
+              <option value="project">College Project</option>
+              <option value="campus_event">Campus Event / Workshop</option>
+              <option value="scholarship">Scholarship Reminder</option>
+              <option value="expense">Student Budget Expense</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Title (e.g. LRU Cache, Google SWE Intern, Hostel Mess Fee)"
+              value={newCareer.title}
+              onChange={(e) => setNewCareer({ ...newCareer, title: e.target.value })}
+              style={{ ...styles.input, flex: 2 }}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Org / Platform (e.g. LeetCode, NIT)"
+              value={newCareer.organization}
+              onChange={(e) => setNewCareer({ ...newCareer, organization: e.target.value })}
+              style={{ ...styles.input, flex: 1 }}
+            />
+            {newCareer.type === 'expense' && (
+              <input
+                type="number"
+                placeholder="Amount (₹)"
+                value={newCareer.amount}
+                onChange={(e) => setNewCareer({ ...newCareer, amount: e.target.value })}
+                style={{ ...styles.input, width: '110px' }}
+              />
+            )}
+            <button type="submit" style={styles.generateBtn}>
+              <Plus size={15} /> Log Item
+            </button>
+          </form>
+
           <div className="card">
-            <h3>Student Career, Projects & DSA Practice Progress</h3>
-            <div className="grid-3" style={{ marginTop: '1rem' }}>
+            <h3>Student Career, Campus Life & Budget Tracker</h3>
+            <div className="grid-3" style={{ margin: '1rem 0' }}>
               <div style={styles.careerStatCard}>
-                <span style={styles.statLabel}>DSA Problems Solved</span>
-                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#818cf8' }}>
-                  {dsaProblemsSolved}
+                <span style={styles.statLabel}>DSA Logged</span>
+                <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#818cf8' }}>
+                  {careerItems.filter(i => i.type === 'dsa_problem').length}
                 </span>
-                <button
-                  onClick={() => setDsaProblemsSolved(p => p + 1)}
-                  style={styles.miniBtn}
-                >
-                  + Log 1 Problem Solved
-                </button>
               </div>
+              <div style={styles.careerStatCard}>
+                <span style={styles.statLabel}>Internships & Projects</span>
+                <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#34d399' }}>
+                  {careerItems.filter(i => i.type === 'internship' || i.type === 'project').length}
+                </span>
+              </div>
+              <div style={styles.careerStatCard}>
+                <span style={styles.statLabel}>Student Expenses</span>
+                <span style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b' }}>
+                  ₹{careerItems.filter(i => i.type === 'expense').reduce((s, i) => s + (i.amount || 0), 0)}
+                </span>
+              </div>
+            </div>
 
-              <div style={styles.careerStatCard}>
-                <span style={styles.statLabel}>Internship Applications</span>
-                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#34d399' }}>
-                  6 Applied
-                </span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>2 in technical screening</span>
-              </div>
-
-              <div style={styles.careerStatCard}>
-                <span style={styles.statLabel}>College Major Projects</span>
-                <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#22d3ee' }}>
-                  LIFE OS
-                </span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Sprint 1 completed</span>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {careerItems.length === 0 ? (
+                <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No career or campus entries yet. Log your first DSA problem, internship, project, scholarship, or budget expense above!</p>
+              ) : (
+                careerItems.map((item) => (
+                  <div key={item._id} style={styles.unitRow}>
+                    <div>
+                      <span className="badge badge-info" style={{ marginRight: '0.5rem' }}>{item.type.replace('_', ' ')}</span>
+                      <strong style={{ color: '#f8fafc' }}>{item.title}</strong>
+                      {item.organization && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '0.5rem' }}>({item.organization})</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {item.amount > 0 && <strong style={{ color: '#fbbf24' }}>₹{item.amount}</strong>}
+                      <button
+                        onClick={() => handleDeleteCareerItem(item._id)}
+                        style={{ ...styles.absentBtn, flex: 'none', padding: '0.25rem 0.6rem' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
